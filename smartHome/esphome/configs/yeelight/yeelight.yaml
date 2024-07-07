@@ -1,0 +1,143 @@
+esphome:
+  name: yeelight
+  friendly_name: yeelight
+
+esp8266:
+  board: esp_wroom_02
+  # framework:
+  #   version: 2.7.4
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/locmark/yeelight_remote
+    components: [ yeelight_remote ]
+    refresh: 10s
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "BbyUegtsZDt9V17u1udHG3hH3YhcNHJpbDCHqlIytP4="
+
+ota:
+  password: "4ca01cb641be478370fbedfca40aabe5"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Yeelight Fallback Hotspot"
+    password: "5lqc2MZhx4Eq"
+
+captive_portal:
+    
+# Enable logging
+# logger:
+#   level: VERY_VERBOSE
+
+# Enable Home Assistant API
+
+
+# i2c:
+#   sda: GPIO2
+#   scl: GPIO14
+#   scan: false
+
+# Example configuration entry
+
+# wled:
+
+# Specify the two pins of the h-bridge as PWM pins
+output:
+  - platform: esp8266_pwm
+    pin: GPIO12
+    id: output_cw
+    power_supply: power
+  - platform: esp8266_pwm
+    pin: GPIO5
+    id: output_ww
+    power_supply: power
+    
+power_supply:
+  - id: power
+    pin: GPIO4
+    enable_time: 0s
+    keep_on_time: 0s
+
+wled:
+
+light:
+  - platform: cwww
+    id: light1
+    default_transition_length: 0.5s
+    constant_brightness: true
+    gamma_correct: 0
+    name: "Yeelight Screenbar face"
+    cold_white: output_cw
+    warm_white: output_ww
+    cold_white_color_temperature: 6500 K
+    warm_white_color_temperature: 2700 K
+  - platform: neopixelbus
+    id: ring
+    type: GRB
+    variant: WS2812X
+    pin: GPIO13
+    num_leds: 40
+    name: "Yeelight Screenbar back LED Ring"
+    power_supply: power
+    effects:
+      - wled:
+          port: 21324
+      - addressable_rainbow:
+      - random:
+      - strobe:
+      - flicker:
+      - addressable_color_wipe:
+    # Limit the brightness to prevent power supply from browning out.
+    color_correct: [80%, 80%, 80%]
+uart:
+  - id: remote_bus
+    baud_rate: 4800
+    rx_pin: GPIO2
+
+
+yeelight_remote:
+  on_press:
+    - light.toggle: light1
+  on_left:
+    then:
+      - light.dim_relative:
+          id: light1
+          relative_brightness: -10%
+  on_right:
+    then:
+      - light.dim_relative:
+          id: light1
+          relative_brightness: 10%
+  on_long_press:
+    - light.toggle: ring
+  on_press_left: 
+    - then:
+        light.control:
+          id: light1
+          color_temperature: !lambda |-
+            float temp = id(light1).remote_values.get_color_temperature() * 0.95;
+            if (temp < 153.8) {
+              return 153.8;
+            }
+            return temp;
+  on_press_right: 
+    - then:
+        light.control:
+          id: light1
+          color_temperature: !lambda |-
+            float temp = id(light1).remote_values.get_color_temperature() * 1.05;
+            if (temp > 370.4) {
+              return 370.4;
+            }
+            return temp;
