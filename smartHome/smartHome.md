@@ -1,3 +1,3 @@
 # smart home
 
-[zigbee](./zigbee.md)
+### [zigbee](./zigbee.md)
